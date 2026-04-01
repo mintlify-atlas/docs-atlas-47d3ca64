@@ -1,0 +1,68 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "decomp",
+  "projectDescription": "A Go library providing matrix decomposition algorithms including QR, Schur, Hessenberg, Eigen, and Parlett methods for complex-valued matrices.",
+  "theme": "luma",
+  "primaryColor": "#2563EB",
+  "lightColor": "#DBEAFE",
+  "darkColor": "#1E3A8A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Decompositions",
+            "pages": [
+              "decompositions/qr",
+              "decompositions/schur",
+              "decompositions/hessenberg",
+              "decompositions/eigen",
+              "decompositions/parlett"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/matrix",
+              "reference/epsilon"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "QR decomposition via Modified Gram-Schmidt and Householder transformation",
+    "Schur decomposition using iterative QR algorithm",
+    "Hessenberg reduction using Householder transformations",
+    "Eigenvalue decomposition via QR iteration and Jacobi method",
+    "Parlett recursion for computing matrix functions",
+    "Full support for complex-valued (complex128) matrices",
+    "Pluggable QRFunc interface for algorithm selection",
+    "Configurable numerical tolerances for all algorithms"
+  ],
+  "publicApiSurface": [
+    "QR(a *matrix.Matrix, tol ...float64) (q, r *matrix.Matrix)",
+    "QRHH(a *matrix.Matrix, tol ...float64) (q, r *matrix.Matrix)",
+    "Schur(a *matrix.Matrix, qr QRFunc, iter int, eps ...float64) (q, t *matrix.Matrix)",
+    "Hessenberg(a *matrix.Matrix, tol ...float64) (q, h *matrix.Matrix)",
+    "EigenQR(m *matrix.Matrix, qr QRFunc, iter int, tol ...float64) (vectors, lambdas *matrix.Matrix)",
+    "EigenUpperTriangular(t *matrix.Matrix, tol ...float64) (vectors, lambdas *matrix.Matrix)",
+    "EigenJacobi(a *matrix.Matrix, iter int, tol ...float64) (vectors, lambdas *matrix.Matrix)",
+    "Parlett(t *matrix.Matrix, f, df ParlettF, tol ...float64) *matrix.Matrix",
+    "matrix.New(z ...[]complex128) *matrix.Matrix",
+    "matrix.Zero(rows, cols int) *matrix.Matrix",
+    "matrix.Identity(size int) *matrix.Matrix",
+    "(*matrix.Matrix).MatMul(n *matrix.Matrix) *matrix.Matrix",
+    "(*matrix.Matrix).Dagger() *matrix.Matrix",
+    "(*matrix.Matrix).Inverse(tol ...float64) *matrix.Matrix",
+    "(*matrix.Matrix).Fdiag(f func(v complex128) complex128)",
+    "epsilon.IsZero(a complex128, tol ...float64) bool",
+    "epsilon.IsClose(a, b complex128, tol ...float64) bool"
+  ]
+}

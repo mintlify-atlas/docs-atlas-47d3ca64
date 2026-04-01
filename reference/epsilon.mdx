@@ -1,0 +1,106 @@
+---
+title: "epsilon package"
+description: "Numerical tolerance helpers for complex128 and float64 comparisons."
+---
+
+The `epsilon` package provides functions for floating-point near-zero and near-equality checks with configurable absolute and relative tolerances.
+
+```go
+import "github.com/itsubaki/decomp/epsilon"
+```
+
+## Default tolerances
+
+```go
+const (
+    AbsTol = 1e-8
+    RelTol = 1e-5
+)
+```
+
+These defaults are used by all functions when no `tol` arguments are provided.
+
+## Tolerance parsing
+
+### `Tol`
+
+```go
+func Tol(tol ...float64) (float64, float64)
+```
+
+Parses the variadic `tol` argument used throughout the decomp API:
+
+- **No args** — returns `(AbsTol, RelTol)` = `(1e-8, 1e-5)`
+- **One arg** — returns `(tol[0], tol[0])` — both set to the same value
+- **Two args** — returns `(tol[0], tol[1])`
+
+## Complex128 functions
+
+### `IsZero`
+
+```go
+func IsZero(a complex128, tol ...float64) bool
+```
+
+Returns true if `a` is close to zero.
+
+```go
+epsilon.IsZero(0.0)           // true
+epsilon.IsZero(1e-9)          // true (within default AbsTol)
+epsilon.IsZero(1e-4)          // false
+epsilon.IsZero(1e-4, 1e-3)    // true (custom tolerance)
+```
+
+### `IsClose`
+
+```go
+func IsClose(a, b complex128, tol ...float64) bool
+```
+
+Returns true if `a` and `b` are close within the given tolerances. Uses the formula:
+
+```
+|a - b| <= AbsTol + RelTol * max(|a|, |b|)
+```
+
+```go
+epsilon.IsClose(1.0, 1.0+1e-9)   // true
+epsilon.IsClose(1.0, 1.1)         // false
+```
+
+## Float64 functions
+
+### `IsZeroF64`
+
+```go
+func IsZeroF64(a float64, tol ...float64) bool
+```
+
+Returns true if the float64 value `a` is close to zero.
+
+### `IsCloseF64`
+
+```go
+func IsCloseF64(a, b float64, tol ...float64) bool
+```
+
+Returns true if two float64 values are close within the given tolerances.
+
+## Usage in decomp algorithms
+
+The `tol ...float64` parameter accepted by all decomp functions is forwarded directly to these epsilon helpers. To tighten or relax numerical comparisons:
+
+```go
+// Use stricter tolerance (1e-12 for both abs and rel)
+Q, R := decomp.QR(a, 1e-12)
+
+// Separate abs and rel tolerances
+Q, T := decomp.Schur(a, decomp.QR, 20, 1e-10, 1e-8)
+
+// Use defaults (recommended for most cases)
+Q, T := decomp.Schur(a, decomp.QR, 20)
+```
+
+<Tip>
+Tightening tolerances increases accuracy but may cause algorithms to run for more iterations or fail to detect near-zero values in ill-conditioned inputs. The defaults work well for most practical matrices.
+</Tip>

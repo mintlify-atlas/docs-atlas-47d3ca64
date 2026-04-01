@@ -1,0 +1,260 @@
+---
+title: "matrix package"
+description: "The core complex128 matrix type with construction, arithmetic, and property-checking operations."
+---
+
+The `matrix` package provides the `Matrix` type — a dense `complex128` matrix with row-major storage.
+
+```go
+import "github.com/itsubaki/decomp/matrix"
+```
+
+## The Matrix type
+
+```go
+type Matrix struct {
+    Rows int
+    Cols int
+    Data []complex128
+}
+```
+
+Data is stored in row-major order: element `(i, j)` is at `Data[i*Cols + j]`.
+
+## Construction
+
+### `New`
+
+```go
+func New(z ...[]complex128) *Matrix
+```
+
+Creates a matrix from row slices.
+
+```go
+m := matrix.New(
+    []complex128{1, 2},
+    []complex128{3, 4},
+)
+// m.Rows == 2, m.Cols == 2
+```
+
+### `Zero`
+
+```go
+func Zero(rows, cols int) *Matrix
+```
+
+Creates a zero matrix of the given dimensions.
+
+```go
+z := matrix.Zero(3, 3)
+```
+
+### `ZeroLike`
+
+```go
+func ZeroLike(m *Matrix) *Matrix
+```
+
+Creates a zero matrix with the same dimensions as `m`.
+
+### `Identity`
+
+```go
+func Identity(size int) *Matrix
+```
+
+Creates an identity matrix of the given size.
+
+```go
+I := matrix.Identity(3)
+```
+
+### `Clone`
+
+```go
+func (m *Matrix) Clone() *Matrix
+```
+
+Returns a deep copy of the matrix.
+
+## Element access
+
+### `At`
+
+```go
+func (m *Matrix) At(i, j int) complex128
+```
+
+Returns the element at row `i`, column `j`.
+
+### `Set`
+
+```go
+func (m *Matrix) Set(i, j int, z complex128)
+```
+
+Sets the element at row `i`, column `j`.
+
+### Arithmetic at position
+
+```go
+func (m *Matrix) AddAt(i, j int, z complex128)
+func (m *Matrix) SubAt(i, j int, z complex128)
+func (m *Matrix) MulAt(i, j int, z complex128)
+func (m *Matrix) DivAt(i, j int, z complex128)
+```
+
+Add, subtract, multiply, or divide the element at `(i, j)` by `z` in place.
+
+### `Row`
+
+```go
+func (m *Matrix) Row(i int) []complex128
+```
+
+Returns the i-th row as a slice (shares underlying storage).
+
+### `Dimension`
+
+```go
+func (m *Matrix) Dimension() (rows int, cols int)
+```
+
+Returns the number of rows and columns.
+
+## Matrix operations
+
+### `MatMul` (method)
+
+```go
+func (m *Matrix) MatMul(n *Matrix) *Matrix
+```
+
+Returns the matrix product `m·n`.
+
+```go
+c := a.MatMul(b) // c = a*b
+```
+
+### `MatMul` (function)
+
+```go
+func MatMul(m ...*Matrix) *Matrix
+```
+
+Variadic product of multiple matrices: `MatMul(A, B, C)` computes A·B·C.
+
+```go
+result := matrix.MatMul(Q, T, Q.Dagger()) // Q*T*Q†
+```
+
+### `Dagger`
+
+```go
+func (m *Matrix) Dagger() *Matrix
+```
+
+Returns the conjugate transpose (†) of the matrix.
+
+```go
+mDag := m.Dagger() // m†
+```
+
+### `Inverse`
+
+```go
+func (m *Matrix) Inverse(tol ...float64) *Matrix
+```
+
+Returns the matrix inverse using Gauss-Jordan elimination with partial pivoting.
+
+```go
+mInv := m.Inverse()
+```
+
+### `Swap`
+
+```go
+func (m *Matrix) Swap(i, j int) *Matrix
+```
+
+Returns a new matrix with rows `i` and `j` swapped.
+
+### `Fdiag`
+
+```go
+func (m *Matrix) Fdiag(f func(v complex128) complex128)
+```
+
+Applies function `f` to each diagonal element in place. Used to transform eigenvalue matrices.
+
+```go
+// Apply sqrt to diagonal elements
+D.Fdiag(func(v complex128) complex128 { return cmplx.Sqrt(v) })
+```
+
+## Iteration
+
+### `Seq2`
+
+```go
+func (m *Matrix) Seq2() iter.Seq2[int, []complex128]
+```
+
+Returns an iterator over (row index, row slice) pairs. Compatible with Go's `range` over functions (Go 1.22+).
+
+```go
+for i, row := range m.Seq2() {
+    fmt.Println(i, row)
+}
+```
+
+## Equality and properties
+
+### `Equal`
+
+```go
+func (m *Matrix) Equal(n *Matrix, tol ...float64) bool
+```
+
+Returns true if all elements of `m` and `n` are close within the given tolerance.
+
+### `IsSquare`
+
+```go
+func (m *Matrix) IsSquare() bool
+```
+
+### `IsUnitary`
+
+```go
+func (m *Matrix) IsUnitary(tol ...float64) bool
+```
+
+Returns true if `m·m† ≈ I`.
+
+### `IsUpperTriangular`
+
+```go
+func (m *Matrix) IsUpperTriangular(tol ...float64) bool
+```
+
+Returns true if all entries below the main diagonal are near zero.
+
+### `IsHessenberg`
+
+```go
+func (m *Matrix) IsHessenberg(tol ...float64) bool
+```
+
+Returns true if all entries below the first subdiagonal are near zero.
+
+### `IsDiagonal`
+
+```go
+func (m *Matrix) IsDiagonal(tol ...float64) bool
+```
+
+Returns true if all off-diagonal entries are near zero.

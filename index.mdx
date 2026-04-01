@@ -1,97 +1,51 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "decomp"
+description: "Matrix decomposition algorithms for Go — QR, Schur, Hessenberg, Eigen, and Parlett methods for complex-valued matrices."
 ---
 
-## Setting up
+`decomp` is a Go library that provides a suite of numerical linear algebra decomposition algorithms. It operates on complex-valued matrices (`complex128`) and offers pluggable algorithm selection, configurable tolerances, and a clean, idiomatic Go API.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Introduction" icon="book-open" href="/introduction">
+    Learn what decomp provides and how the algorithms relate to each other.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install the library and run your first matrix decomposition in minutes.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Decompositions" icon="square-root-variable" href="/decompositions/qr">
+    Explore QR, Schur, Hessenberg, Eigen, and Parlett decomposition algorithms.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="API Reference" icon="code" href="/reference/matrix">
+    Full reference for the matrix and epsilon packages.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What decomp provides
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="QR Decomposition" icon="table-columns" href="/decompositions/qr">
+    Factor a matrix into an orthonormal Q and upper-triangular R using Modified Gram-Schmidt or Householder transformations.
+  </Card>
+  <Card title="Schur Decomposition" icon="arrows-rotate" href="/decompositions/schur">
+    Iteratively reduce a matrix to upper-triangular form Q·T·Q† using the QR algorithm.
+  </Card>
+  <Card title="Hessenberg Reduction" icon="layer-group" href="/decompositions/hessenberg">
+    Reduce a matrix to upper Hessenberg form Q·H·Q† via Householder reflections.
+  </Card>
+  <Card title="Eigendecomposition" icon="chart-scatter" href="/decompositions/eigen">
+    Compute eigenvalues and eigenvectors using the QR iteration or Jacobi method for Hermitian matrices.
+  </Card>
+  <Card title="Matrix Functions (Parlett)" icon="function" href="/decompositions/parlett">
+    Evaluate arbitrary scalar functions applied to a matrix via Parlett's recursion on upper triangular matrices.
+  </Card>
+  <Card title="Matrix Package" icon="grid" href="/reference/matrix">
+    Core `complex128` matrix type with construction, arithmetic, and property-checking operations.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Key design principles
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+- **Complex-valued throughout** — all matrices use `complex128`, supporting both real and complex problems
+- **Pluggable QR backend** — select `QR` (Modified Gram-Schmidt) or `QRHH` (Householder) via the `QRFunc` interface
+- **Configurable tolerances** — every algorithm accepts optional `tol ...float64` arguments for numerical precision
+- **Zero dependencies** — pure Go standard library, no external packages required

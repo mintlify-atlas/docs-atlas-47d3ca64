@@ -1,0 +1,117 @@
+---
+title: "QR Decomposition"
+description: "Factor a matrix A = Q·R where Q is unitary and R is upper triangular."
+---
+
+QR decomposition factors a matrix `A` into:
+- **Q** — a unitary matrix (Q·Q† = I)
+- **R** — an upper triangular matrix
+
+such that `A = Q·R`. decomp provides two algorithms selectable via the `QRFunc` interface.
+
+## Functions
+
+### `QR` — Modified Gram-Schmidt
+
+```go
+func QR(a *matrix.Matrix, tol ...float64) (q *matrix.Matrix, r *matrix.Matrix)
+```
+
+Computes QR decomposition using the Modified Gram-Schmidt process. Numerically stable for most well-conditioned matrices. Columns of Q that would be numerically zero (norm below tolerance) are set to zero rather than causing a division-by-zero error.
+
+### `QRHH` — Householder transformation
+
+```go
+func QRHH(a *matrix.Matrix, tol ...float64) (q *matrix.Matrix, r *matrix.Matrix)
+```
+
+Computes QR decomposition using Householder reflections. Generally more numerically stable than Gram-Schmidt for ill-conditioned matrices. Constructs Q as a product of Householder matrices applied from the right.
+
+### The `QRFunc` type
+
+Both functions satisfy the `QRFunc` interface:
+
+```go
+type QRFunc func(a *matrix.Matrix, eps ...float64) (q *matrix.Matrix, r *matrix.Matrix)
+```
+
+Pass either `decomp.QR` or `decomp.QRHH` to `Schur` and `EigenQR`:
+
+```go
+var _ decomp.QRFunc = decomp.QR
+var _ decomp.QRFunc = decomp.QRHH
+```
+
+## Usage
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/itsubaki/decomp"
+	"github.com/itsubaki/decomp/matrix"
+)
+
+func main() {
+	a := matrix.New(
+		[]complex128{1, 2, 3},
+		[]complex128{3, 4, 5},
+		[]complex128{7, 8, 10},
+	)
+
+	// Use Modified Gram-Schmidt
+	Q, R := decomp.QR(a)
+	fmt.Println("Q unitary:", Q.IsUnitary())
+	fmt.Println("R upper triangular:", R.IsUpperTriangular())
+	fmt.Println("Q*R == A:", matrix.MatMul(Q, R).Equal(a))
+
+	// Swap to Householder — same interface
+	Q2, R2 := decomp.QRHH(a)
+	fmt.Println("Q2 unitary:", Q2.IsUnitary())
+	fmt.Println("Q2*R2 == A:", matrix.MatMul(Q2, R2).Equal(a))
+}
+```
+
+## Rank-deficient matrices
+
+When a column is linearly dependent, `QR` zeroes out that column in Q rather than dividing by near-zero norm. The corresponding R row will be all zeros:
+
+```go
+a := matrix.New(
+	[]complex128{1, 2, 3},
+	[]complex128{2, 4, 6}, // linearly dependent
+	[]complex128{3, 6, 9}, // linearly dependent
+)
+
+_, r := decomp.QR(a)
+// r row 1 and row 2 are all zeros
+```
+
+## Parameters
+
+<ParamField path="a" type="*matrix.Matrix" required>
+  The input matrix to decompose. Need not be square.
+</ParamField>
+
+<ParamField path="tol" type="...float64">
+  Optional tolerance overrides. First value sets absolute tolerance, second sets relative tolerance. Defaults: `AbsTol=1e-8`, `RelTol=1e-5`.
+</ParamField>
+
+## Return values
+
+<ResponseField name="q" type="*matrix.Matrix">
+  Unitary matrix Q whose columns are orthonormal.
+</ResponseField>
+
+<ResponseField name="r" type="*matrix.Matrix">
+  Upper triangular matrix R.
+</ResponseField>
+
+## When to choose each algorithm
+
+| Algorithm | Use when |
+|-----------|----------|
+| `QR` (Gram-Schmidt) | Default choice; fast and straightforward |
+| `QRHH` (Householder) | Better numerical stability for ill-conditioned or large matrices |

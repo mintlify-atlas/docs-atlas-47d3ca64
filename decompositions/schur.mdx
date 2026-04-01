@@ -1,0 +1,108 @@
+---
+title: "Schur Decomposition"
+description: "Reduce a matrix to upper triangular form A = Q·T·Q† using iterative QR."
+---
+
+Schur decomposition factors a square matrix `A` into:
+- **Q** — a unitary matrix (Q·Q† = I)
+- **T** — an upper triangular matrix
+
+such that `A = Q·T·Q†`. The eigenvalues of A appear on the diagonal of T.
+
+## Function
+
+```go
+func Schur(a *matrix.Matrix, qr QRFunc, iter int, eps ...float64) (q *matrix.Matrix, t *matrix.Matrix)
+```
+
+Uses the iterative QR algorithm: at each step, factor `T = Qk·Rk`, then update `T = Rk·Qk` and accumulate `Q = Q·Qk`. Iteration stops early when T becomes upper triangular within tolerance.
+
+## Parameters
+
+<ParamField path="a" type="*matrix.Matrix" required>
+  The square input matrix to decompose.
+</ParamField>
+
+<ParamField path="qr" type="QRFunc" required>
+  The QR backend to use. Pass `decomp.QR` (Gram-Schmidt) or `decomp.QRHH` (Householder).
+</ParamField>
+
+<ParamField path="iter" type="int" required>
+  Maximum number of QR iterations. Typical values: 20–100 depending on matrix size and condition.
+</ParamField>
+
+<ParamField path="eps" type="...float64">
+  Optional tolerance overrides. Defaults: `AbsTol=1e-8`, `RelTol=1e-5`.
+</ParamField>
+
+## Return values
+
+<ResponseField name="q" type="*matrix.Matrix">
+  Unitary matrix Q such that A = Q·T·Q†.
+</ResponseField>
+
+<ResponseField name="t" type="*matrix.Matrix">
+  Upper triangular matrix T. Eigenvalues of A are on its diagonal.
+</ResponseField>
+
+## Usage
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/itsubaki/decomp"
+	"github.com/itsubaki/decomp/matrix"
+)
+
+func main() {
+	a := matrix.New(
+		[]complex128{1, 2},
+		[]complex128{3, 4},
+	)
+
+	Q, T := decomp.Schur(a, decomp.QR, 20)
+
+	fmt.Println("Q unitary:", Q.IsUnitary())
+	fmt.Println("T upper triangular:", T.IsUpperTriangular())
+	fmt.Println("Q*T*Q† == A:", matrix.MatMul(Q, T, Q.Dagger()).Equal(a))
+
+	// Eigenvalues are on the diagonal of T
+	fmt.Println("λ1:", T.At(0, 0))
+	fmt.Println("λ2:", T.At(1, 1))
+}
+```
+
+## Switching QR backends
+
+```go
+// Gram-Schmidt backend
+Q1, T1 := decomp.Schur(a, decomp.QR, 20)
+
+// Householder backend — more stable for ill-conditioned matrices
+Q2, T2 := decomp.Schur(a, decomp.QRHH, 20)
+```
+
+## Complex matrices
+
+Schur decomposition works fully with complex entries:
+
+```go
+a := matrix.New(
+	[]complex128{1 + 1i, 2 - 1i},
+	[]complex128{3 + 4i, 4},
+)
+
+Q, T := decomp.Schur(a, decomp.QRHH, 20)
+fmt.Println("Q*T*Q† == A:", matrix.MatMul(Q, T, Q.Dagger()).Equal(a))
+```
+
+## Relation to eigendecomposition
+
+Schur decomposition is the intermediate step in `EigenQR`. Once you have T (upper triangular), call `EigenUpperTriangular(T)` to extract eigenvectors and eigenvalues. Or use `EigenQR` which performs both steps together.
+
+<Note>
+For extracting eigenvalues only, reading the diagonal of T is sufficient — no need to compute eigenvectors.
+</Note>

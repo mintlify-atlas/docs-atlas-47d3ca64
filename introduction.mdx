@@ -1,0 +1,69 @@
+---
+title: "Introduction"
+description: "decomp is a Go library providing matrix decomposition algorithms for complex-valued matrices."
+---
+
+`decomp` is a pure Go library implementing core numerical linear algebra decompositions. All operations work on complex-valued (`complex128`) matrices, making it suitable for both real and complex problems including quantum computing, signal processing, and numerical analysis.
+
+## Algorithms
+
+<CardGroup cols={2}>
+  <Card title="QR Decomposition" icon="table-columns" href="/decompositions/qr">
+    Factor A = Q·R where Q is unitary and R is upper triangular. Two backends: Modified Gram-Schmidt and Householder.
+  </Card>
+  <Card title="Schur Decomposition" icon="arrows-rotate" href="/decompositions/schur">
+    Reduce A = Q·T·Q† where T is upper triangular. Built on iterative QR with a pluggable backend.
+  </Card>
+  <Card title="Hessenberg Reduction" icon="layer-group" href="/decompositions/hessenberg">
+    Reduce A = Q·H·Q† where H is upper Hessenberg. A preprocessing step that accelerates Schur convergence.
+  </Card>
+  <Card title="Eigendecomposition" icon="chart-scatter" href="/decompositions/eigen">
+    Compute eigenvalues and eigenvectors. Supports general matrices (QR method) and Hermitian matrices (Jacobi method).
+  </Card>
+  <Card title="Matrix Functions (Parlett)" icon="function" href="/decompositions/parlett">
+    Compute f(A) for an upper triangular matrix A using Parlett's recurrence relation.
+  </Card>
+  <Card title="Matrix Package" icon="grid" href="/reference/matrix">
+    The core `complex128` matrix type with construction, arithmetic, and structural property helpers.
+  </Card>
+</CardGroup>
+
+## How algorithms relate
+
+A common pipeline for eigendecomposition of a general matrix is:
+
+1. **Hessenberg** — reduce to upper Hessenberg form (optional but speeds convergence)
+2. **Schur** — iteratively apply QR until upper triangular
+3. **Eigen** — extract eigenvalues from the diagonal of T, eigenvectors via back-substitution
+
+`EigenQR` performs steps 2–3 in one call. You can supply `QR` or `QRHH` as the backend.
+
+## The QRFunc interface
+
+Both QR backends satisfy the `QRFunc` type:
+
+```go
+type QRFunc func(a *matrix.Matrix, eps ...float64) (q *matrix.Matrix, r *matrix.Matrix)
+```
+
+Pass either `decomp.QR` (Modified Gram-Schmidt) or `decomp.QRHH` (Householder) wherever a `QRFunc` is accepted — `Schur`, `EigenQR`. This lets you swap algorithms without changing the rest of your code.
+
+## Tolerance system
+
+Every algorithm accepts an optional `tol ...float64` variadic argument:
+
+- **No argument** — uses defaults: `AbsTol = 1e-8`, `RelTol = 1e-5`
+- **One value** — sets both absolute and relative tolerance to that value
+- **Two values** — sets `AbsTol = tol[0]`, `RelTol = tol[1]`
+
+Tolerances are used for near-zero comparisons during decomposition (e.g., detecting linearly dependent columns in QR, checking upper-triangular convergence in Schur).
+
+## Module path
+
+```
+github.com/itsubaki/decomp
+```
+
+Sub-packages:
+- `github.com/itsubaki/decomp/matrix` — the `Matrix` type
+- `github.com/itsubaki/decomp/epsilon` — tolerance helpers

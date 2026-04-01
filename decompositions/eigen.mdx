@@ -1,0 +1,136 @@
+---
+title: "Eigendecomposition"
+description: "Compute eigenvalues and eigenvectors using QR iteration or the Jacobi method."
+---
+
+decomp provides three eigen functions covering different use cases:
+
+| Function | Input | Method |
+|----------|-------|--------|
+| `EigenQR` | Any square matrix | Schur decomposition + back-substitution |
+| `EigenUpperTriangular` | Upper triangular matrix | Direct back-substitution |
+| `EigenJacobi` | Hermitian matrix | Jacobi rotation method |
+
+All functions return a matrix of eigenvectors `V` and a diagonal matrix `D` such that `A = V·D·V⁻¹` (or `A = V·D·V†` for Jacobi).
+
+## `EigenQR`
+
+```go
+func EigenQR(m *matrix.Matrix, qr QRFunc, iter int, tol ...float64) (vectors *matrix.Matrix, lambdas *matrix.Matrix)
+```
+
+Computes eigendecomposition of a general square matrix by:
+1. Running Schur decomposition to get upper triangular T
+2. Calling `EigenUpperTriangular` on T
+3. Transforming eigenvectors back via Q
+
+<ParamField path="m" type="*matrix.Matrix" required>
+  Any square matrix.
+</ParamField>
+
+<ParamField path="qr" type="QRFunc" required>
+  QR backend: `decomp.QR` or `decomp.QRHH`.
+</ParamField>
+
+<ParamField path="iter" type="int" required>
+  Maximum Schur iterations (e.g. 20).
+</ParamField>
+
+<ParamField path="tol" type="...float64">
+  Optional tolerances.
+</ParamField>
+
+```go
+a := matrix.New(
+	[]complex128{1, 2},
+	[]complex128{3, 4},
+)
+
+P, D := decomp.EigenQR(a, decomp.QR, 20)
+
+fmt.Println("D diagonal:", D.IsDiagonal())
+fmt.Println("P*D*P⁻¹ == A:", matrix.MatMul(P, D, P.Inverse()).Equal(a))
+```
+
+## `EigenUpperTriangular`
+
+```go
+func EigenUpperTriangular(t *matrix.Matrix, tol ...float64) (vectors *matrix.Matrix, lambdas *matrix.Matrix)
+```
+
+Extracts eigenvectors and eigenvalues directly from an upper triangular matrix using back-substitution. Eigenvalues are the diagonal entries. Eigenvectors are computed column by column via the triangular system `(T - λI)x = 0`.
+
+<ParamField path="t" type="*matrix.Matrix" required>
+  An upper triangular matrix.
+</ParamField>
+
+```go
+t := matrix.New(
+	[]complex128{1, 2, 3, 4, 5},
+	[]complex128{0, 2, 3, 4, 5},
+	[]complex128{0, 0, 3, 4, 5},
+	[]complex128{0, 0, 0, 4, 5},
+	[]complex128{0, 0, 0, 0, 5},
+)
+
+P, D := decomp.EigenUpperTriangular(t)
+fmt.Println("P*D*P⁻¹ == T:", matrix.MatMul(P, D, P.Inverse()).Equal(t))
+```
+
+## `EigenJacobi`
+
+```go
+func EigenJacobi(a *matrix.Matrix, iter int, tol ...float64) (vectors *matrix.Matrix, lambdas *matrix.Matrix)
+```
+
+Computes eigendecomposition of a **Hermitian** matrix using the Jacobi rotation method. Iteratively applies unitary rotations to diagonalize A. Returns unitary V and diagonal D such that `A = V·D·V†`.
+
+<ParamField path="a" type="*matrix.Matrix" required>
+  A Hermitian matrix (A = A†).
+</ParamField>
+
+<ParamField path="iter" type="int" required>
+  Number of sweep iterations (e.g. 10).
+</ParamField>
+
+<Warning>
+`EigenJacobi` assumes the input is Hermitian. It does not verify this. If you pass a non-Hermitian matrix, results will be incorrect.
+</Warning>
+
+```go
+x := matrix.New(
+	[]complex128{0, 1},
+	[]complex128{1, 0},
+)
+
+V, D := decomp.EigenJacobi(x, 10)
+
+fmt.Println("V unitary:", V.IsUnitary())
+fmt.Println("D diagonal:", D.IsDiagonal())
+fmt.Println("V*D*V† == X:", matrix.MatMul(V, D, V.Dagger()).Equal(x))
+```
+
+## Computing matrix functions via eigendecomposition
+
+A key use of eigendecomposition is computing matrix functions. Use `Fdiag` to apply a scalar function to the eigenvalue diagonal:
+
+```go
+// Compute matrix square root: sqrtX = V * sqrt(D) * V†
+V, D := decomp.EigenJacobi(x, 10)
+D.Fdiag(func(v complex128) complex128 { return cmplx.Pow(v, 0.5) })
+sqrtX := matrix.MatMul(V, D, V.Dagger())
+```
+
+```go
+// Compute matrix exponential: exp(-i*theta/2 * X)
+theta := 0.5
+V, D := decomp.EigenJacobi(x, 10)
+D.Fdiag(func(v complex128) complex128 {
+	return cmplx.Exp(-1i * complex(theta/2, 0) * v)
+})
+result := matrix.MatMul(V, D, V.Dagger())
+```
+
+<Tip>
+For Hermitian matrices, prefer `EigenJacobi` — it guarantees a unitary V, making `V†` equivalent to `V.Dagger()` (no need for `Inverse()`).
+</Tip>

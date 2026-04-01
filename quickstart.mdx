@@ -1,80 +1,141 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Install decomp and run your first matrix decomposition."
 ---
 
-## Get started in three steps
+## Installation
 
-Get your documentation site running locally and make your first customization.
+Add `decomp` to your Go module:
 
-### Step 1: Set up your local environment
+```bash
+go get github.com/itsubaki/decomp
+```
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+Requires Go 1.24 or later.
 
-### Step 2: Deploy your changes
+## Example 1: QR decomposition
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+Factor a matrix into Q (unitary) and R (upper triangular) such that A = Q·R.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+```go
+package main
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+import (
+	"fmt"
 
-### Step 3: Go live
+	"github.com/itsubaki/decomp"
+	"github.com/itsubaki/decomp/matrix"
+)
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+func main() {
+	a := matrix.New(
+		[]complex128{1, 2},
+		[]complex128{3, 4},
+	)
+
+	Q, R := decomp.QR(a)
+
+	fmt.Println("Q unitary:", Q.IsUnitary())
+	fmt.Println("R upper triangular:", R.IsUpperTriangular())
+	fmt.Println("Q*R == A:", matrix.MatMul(Q, R).Equal(a))
+}
+```
+
+To use Householder reflections instead of Modified Gram-Schmidt, swap `decomp.QR` for `decomp.QRHH` — the signature is identical.
+
+## Example 2: Eigendecomposition and matrix powers
+
+Compute the square root of a matrix using eigendecomposition and `Fdiag`.
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/cmplx"
+
+	"github.com/itsubaki/decomp"
+	"github.com/itsubaki/decomp/matrix"
+)
+
+func main() {
+	x := matrix.New(
+		[]complex128{0, 1},
+		[]complex128{1, 0},
+	)
+
+	// EigenJacobi requires a Hermitian matrix
+	V, D := decomp.EigenJacobi(x, 10)
+
+	// Apply sqrt to the diagonal eigenvalues
+	D.Fdiag(func(v complex128) complex128 { return cmplx.Pow(v, 0.5) })
+
+	sqrtx := matrix.MatMul(V, D, V.Dagger())
+
+	// Verify: sqrtx * sqrtx == x
+	fmt.Println(matrix.MatMul(sqrtx, sqrtx).Equal(x)) // true
+}
+```
+
+<Tip>
+`EigenJacobi` requires the input to be Hermitian (A = A†). For general matrices, use `EigenQR` instead.
+</Tip>
+
+## Example 3: Matrix functions via Parlett
+
+Compute a matrix function f(T) on an upper triangular matrix using Parlett's recurrence.
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/cmplx"
+
+	"github.com/itsubaki/decomp"
+	"github.com/itsubaki/decomp/matrix"
+)
+
+func main() {
+	pow := func(p complex128) (decomp.ParlettF, decomp.ParlettF) {
+		return func(z complex128) complex128 {
+				return cmplx.Pow(z, p)
+			}, func(z complex128) complex128 {
+				return p * cmplx.Pow(z, p-1)
+			}
+	}
+
+	t := matrix.New(
+		[]complex128{2, 2, 3},
+		[]complex128{0, 2, 5},
+		[]complex128{0, 0, 3},
+	)
+
+	f, df := pow(2)
+	t2 := decomp.Parlett(t, f, df)
+
+	// t^2 via Parlett == t*t
+	fmt.Println(t2.Equal(matrix.MatMul(t, t))) // true
+}
+```
+
+<Note>
+`Parlett` requires an upper triangular input. Use `Schur` first to reduce a general matrix to upper triangular form.
+</Note>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="QR Decomposition" icon="table-columns" href="/decompositions/qr">
+    Learn the two QR backends and when to use each.
+  </Card>
+  <Card title="Eigendecomposition" icon="chart-scatter" href="/decompositions/eigen">
+    Compute eigenvalues and eigenvectors for general and Hermitian matrices.
+  </Card>
+  <Card title="Schur Decomposition" icon="arrows-rotate" href="/decompositions/schur">
+    Reduce any square matrix to upper triangular Schur form.
+  </Card>
+  <Card title="Matrix Reference" icon="grid" href="/reference/matrix">
+    Full API reference for the matrix package.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

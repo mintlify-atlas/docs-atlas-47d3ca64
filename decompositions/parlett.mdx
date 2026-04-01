@@ -1,0 +1,131 @@
+---
+title: "Parlett Recursion"
+description: "Compute matrix functions f(A) for upper triangular matrices using Parlett's recurrence."
+---
+
+Parlett's method computes a matrix function `f(T)` where T is upper triangular, using the recurrence relation on off-diagonal entries. It requires both `f` and its derivative `df`.
+
+## Function
+
+```go
+func Parlett(t *matrix.Matrix, f, df ParlettF, tol ...float64) *matrix.Matrix
+```
+
+### The `ParlettF` type
+
+```go
+type ParlettF func(z complex128) complex128
+```
+
+Both `f` and `df` have the same signature — they are scalar complex functions applied element-wise to the eigenvalues and used in the recurrence.
+
+## Parameters
+
+<ParamField path="t" type="*matrix.Matrix" required>
+  An upper triangular matrix. The input must already be in upper triangular form.
+</ParamField>
+
+<ParamField path="f" type="ParlettF" required>
+  The scalar function to apply to the matrix. Applied to diagonal entries directly: `f(t[i,i])`.
+</ParamField>
+
+<ParamField path="df" type="ParlettF" required>
+  The derivative of `f`. Used when two diagonal entries are equal (confluent eigenvalues) to avoid division by zero.
+</ParamField>
+
+<ParamField path="tol" type="...float64">
+  Optional tolerances for near-equality checks on diagonal entries.
+</ParamField>
+
+## Return value
+
+<ResponseField name="(return)" type="*matrix.Matrix">
+  The matrix f(T), same size as T.
+</ResponseField>
+
+## Usage
+
+### Matrix power
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/cmplx"
+
+	"github.com/itsubaki/decomp"
+	"github.com/itsubaki/decomp/matrix"
+)
+
+func main() {
+	pow := func(p complex128) (decomp.ParlettF, decomp.ParlettF) {
+		return func(z complex128) complex128 {
+				return cmplx.Pow(z, p)
+			}, func(z complex128) complex128 {
+				return p * cmplx.Pow(z, p-1)
+			}
+	}
+
+	t := matrix.New(
+		[]complex128{2, 2, 3},
+		[]complex128{0, 2, 5},
+		[]complex128{0, 0, 3},
+	)
+
+	f, df := pow(2)
+	t2 := decomp.Parlett(t, f, df)
+
+	fmt.Println(t2.Equal(matrix.MatMul(t, t))) // true
+}
+```
+
+### Matrix exponential
+
+```go
+f  := func(z complex128) complex128 { return cmplx.Exp(z) }
+df := func(z complex128) complex128 { return cmplx.Exp(z) } // d/dz exp(z) = exp(z)
+
+expT := decomp.Parlett(t, f, df)
+```
+
+### Matrix logarithm
+
+```go
+f  := func(z complex128) complex128 { return cmplx.Log(z) }
+df := func(z complex128) complex128 { return 1 / z }
+
+logT := decomp.Parlett(t, f, df)
+```
+
+## Applying Parlett to a general matrix
+
+`Parlett` requires an upper triangular input. To apply a matrix function to a general matrix `A`:
+
+1. Compute the Schur decomposition: `Q, T = Schur(A, qr, iter)`
+2. Apply Parlett to T: `fT = Parlett(T, f, df)`
+3. Transform back: `f(A) = Q · f(T) · Q†`
+
+```go
+Q, T := decomp.Schur(a, decomp.QR, 20)
+
+f  := func(z complex128) complex128 { return cmplx.Sqrt(z) }
+df := func(z complex128) complex128 { return 1 / (2 * cmplx.Sqrt(z)) }
+
+fT := decomp.Parlett(T, f, df)
+fA := matrix.MatMul(Q, fT, Q.Dagger())
+```
+
+<Note>
+When two diagonal entries of T are equal (confluent eigenvalues), Parlett uses `df` to compute the off-diagonal entries via the derivative rule rather than dividing by zero.
+</Note>
+
+## How the recurrence works
+
+Parlett's method fills the result matrix `F` column by column:
+
+- **Diagonal**: `F[i,i] = f(T[i,i])`
+- **Off-diagonal** (when `T[i,i] ≠ T[j,j]`):
+  `F[i,j] = (T[i,j]·(F[j,j] - F[i,i]) + Σ (T[i,k]·F[k,j] - F[i,k]·T[k,j])) / (T[j,j] - T[i,i])`
+- **Confluent case** (when `T[i,i] ≈ T[j,j]`):
+  `F[i,j] = T[i,j]·df(T[i,i]) + num`
